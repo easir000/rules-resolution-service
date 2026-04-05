@@ -45,7 +45,7 @@ func main() {
 	r.Route("/api", func(r chi.Router) {
 		resolveHandler.RegisterRoutes(r)
 	overrideHandler.RegisterRoutes(r)
-		overrideHandler.RegisterRoutes(r)
+		
 		
 		// Health check
 		r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -145,4 +145,7 @@ func loadTestOverrides() []domain.Override {
 
 func ptr(s string) *string { return &s }
 func mustParseDate(d string) time.Time { t, _ := time.Parse("2006-01-02", d); return t }
+
+
+
 
