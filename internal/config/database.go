@@ -1,4 +1,4 @@
-﻿$content = @"
+﻿
 package config
 
 import (
@@ -40,5 +40,3 @@ func NewPool(cfg DatabaseConfig) (*pgxpool.Pool, error) {
 func getEnv(key, fallback string) string { return fallback }
 func getIntEnv(key string, fallback int) int { return fallback }
 func getDurationEnv(key string, fallback time.Duration) time.Duration { return fallback }
-"@
-Set-Content -Path "internal/config/database.go" -Value $content -Encoding utf8

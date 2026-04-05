@@ -1,5 +1,4 @@
-﻿$content = @"
-package config
+﻿package config
 
 import "os"
 
@@ -25,5 +24,3 @@ func getEnv(key, fallback string) string {
 }
 func getIntEnv(key string, fallback int) int { return fallback }
 func getBoolEnv(key string, fallback bool) bool { return fallback }
-"@
-Set-Content -Path "internal/config/config.go" -Value $content -Encoding utf8
