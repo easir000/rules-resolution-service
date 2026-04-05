@@ -1,43 +1,82 @@
 ﻿package main
 
 import (
-    "encoding/json"
-    "fmt"
-    "log"
-    "net/http"
-    "os"
-    "sort"
-    "strings"
-    "time"
+	"context"
+	"encoding/json"
+	"log"
+	"net/http"
+	"os"
+	"time"
 
-    "github.com/go-chi/chi/v5"
-    "github.com/go-chi/chi/v5/middleware"
-    "github.com/pearsonspecter/rules-resolution/internal/domain"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/pearsonspecter/rules-resolution/internal/config"
+	"github.com/pearsonspecter/rules-resolution/internal/database"
+	"github.com/pearsonspecter/rules-resolution/internal/domain"
+	"github.com/pearsonspecter/rules-resolution/internal/handler"
+	"github.com/pearsonspecter/rules-resolution/internal/repository"
+	"github.com/pearsonspecter/rules-resolution/internal/service"
 )
 
 func main() {
-    r := chi.NewRouter()
-    r.Use(middleware.Logger)
-    r.Use(middleware.Recoverer)
+	cfg := config.Load()
+	dbCfg := config.LoadDatabaseConfig()
 
-    defaults := loadDefaults()
-    overrides := loadTestOverrides()
+	pool, err := config.NewPool(dbCfg)
+	if err != nil {
+		log.Fatalf("failed to connect to database: %v", err)
+	}
+	defer pool.Close()
 
-    // Resolution endpoint
-    r.Post("/api/resolve", resolveHandler(defaults, overrides))
-    
-    // Explain endpoint
-    r.Post("/api/resolve/explain", explainHandler(overrides))
-    
-    // Health check
-    r.Get("/api/health", healthHandler)
+	if cfg.RunMigrations {
+		if err := database.RunMigrations(pool); err != nil {
+			log.Fatalf("failed to run migrations: %v", err)
+		}
+		log.Println("✓ Migrations applied")
+	}
 
-    port := os.Getenv("PORT")
-    if port == "" {
-        port = "8080"
-    }
-    log.Printf("🚀 Server starting on :%s", port)
-    log.Fatal(http.ListenAndServe(":"+port, r))
+	if cfg.SeedData {
+		if err := database.SeedData(pool); err != nil {
+			log.Fatalf("failed to seed  %v", err)
+		}
+		log.Println("✓ Seed data loaded")
+	}
+
+	overrideRepo := repository.NewOverrideRepository(pool)
+	defaultRepo := repository.NewDefaultRepository(pool)
+
+	defaults, err := defaultRepo.LoadAll(context.Background())
+	if err != nil {
+		log.Fatalf("failed to load defaults: %v", err)
+	}
+
+	resolutionSvc := service.NewResolutionService(defaults, overrideRepo)
+	explainSvc := service.NewExplainService(defaults, overrideRepo)
+	conflictSvc := service.NewConflictService(overrideRepo)
+
+	resolveHandler := handler.NewResolveHandler(resolutionSvc, explainSvc)
+	overrideHandler := handler.NewOverrideHandler(overrideRepo, conflictSvc)
+
+	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.RequestID)
+
+	r.Route("/api", func(r chi.Router) {
+		resolveHandler.RegisterRoutes(r)
+		overrideHandler.RegisterRoutes(r)
+		r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"status":"ok"}`))
+		})
+	})
+
+	addr := ":" + os.Getenv("PORT")
+	if addr == ":" {
+		addr = ":8080"
+	}
+	log.Printf("🚀 Server starting on %s", addr)
+	log.Fatal(http.ListenAndServe(addr, r))
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {

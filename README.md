@@ -19,3 +19,9 @@ go build -o rules-resolution.exe ./cmd/server
 
 # Or specify port
 $env:PORT="8082"; .\rules-resolution.exe
+
+## Overview
+
+Given a case context like:
+```json
+{"state": "FL", "client": "Chase", "investor": "FHA", "caseType": "FC-Judicial"}
