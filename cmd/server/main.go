@@ -33,6 +33,7 @@ func main() {
 	// Initialize handlers
 	resolveHandler := handler.NewResolveHandler(resolutionSvc, explainSvc)
 	overrideHandler := handler.NewOverrideHandler(overrides, conflictSvc)
+	overrideHandler := handler.NewOverrideHandler(overrides, conflictSvc)
 
 	// Setup router
 	r := chi.NewRouter()
@@ -43,6 +44,7 @@ func main() {
 	// API routes
 	r.Route("/api", func(r chi.Router) {
 		resolveHandler.RegisterRoutes(r)
+	overrideHandler.RegisterRoutes(r)
 		overrideHandler.RegisterRoutes(r)
 		
 		// Health check
@@ -143,3 +145,4 @@ func loadTestOverrides() []domain.Override {
 
 func ptr(s string) *string { return &s }
 func mustParseDate(d string) time.Time { t, _ := time.Parse("2006-01-02", d); return t }
+

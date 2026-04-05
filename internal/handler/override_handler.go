@@ -66,7 +66,7 @@ func (h *OverrideHandler) List(w http.ResponseWriter, r *http.Request) {
 	sort.Slice(filtered, func(i, j int) bool { return filtered[i].ID > filtered[j].ID })
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string][]domain.Override{"overrides": filtered})
+	w.Header().Set("Content-Type", "application/json")`n`tw.WriteHeader(http.StatusOK)`n`tjson.NewEncoder(w).Encode(map[string][]domain.Override{"overrides": filtered})
 }
 
 func (h *OverrideHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -95,7 +95,7 @@ func (h *OverrideHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if o.Status == "" { o.Status = "draft" }
 	
 	h.overrides = append(h.overrides, o)
-	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")`n`tw.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(o)
 }
@@ -177,3 +177,4 @@ func filterOverrides(overrides []domain.Override, fn func(domain.Override) bool)
 	}
 	return result
 }
+
