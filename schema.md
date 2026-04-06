@@ -7,7 +7,7 @@
 
 ## 📊 Entity Relationship Diagram
 
-
+```
 ┌─────────────────────────┐       ┌─────────────────────────┐       ┌─────────────────────────┐
 │         steps           │       │        defaults         │       │        overrides        │
 ├─────────────────────────┤       ├─────────────────────────┤       ├─────────────────────────┤
@@ -31,7 +31,7 @@
 │ after_state (JSONB)     │                                         └─────────────────────────┘
 │ summary                 │
 └─────────────────────────┘
-
+```
 
 ---
 
@@ -41,7 +41,7 @@
 
 **Purpose:** Defines the six canonical workflow steps in the foreclosure process.
 
-
+```sql
 CREATE TABLE steps (
     key VARCHAR(50) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -50,7 +50,7 @@ CREATE TABLE steps (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-
+```
 
 | Column | Type | Constraints | Purpose |
 |--------|------|-------------|---------|
@@ -62,7 +62,7 @@ CREATE TABLE steps (
 | `updated_at` | TIMESTAMPTZ | DEFAULT NOW() | Last modification timestamp |
 
 **Seed Data:**
-
+```sql
 INSERT INTO steps (key, name, description, position) VALUES
 ('title-search', 'Title Search', 'Research property ownership, liens, encumbrances, and tax status. Verify chain of title.', 1),
 ('file-complaint', 'File Complaint', 'Prepare and file the foreclosure complaint (judicial) or notice of default (non-judicial) with the court.', 2),
@@ -70,7 +70,7 @@ INSERT INTO steps (key, name, description, position) VALUES
 ('obtain-judgment', 'Obtain Judgment', 'Obtain a judgment of foreclosure from the court authorizing the sale of the property.', 4),
 ('schedule-sale', 'Schedule Sale', 'Schedule the foreclosure sale date, coordinate publication requirements, and notify all parties.', 5),
 ('conduct-sale', 'Conduct Sale', 'Conduct the foreclosure auction, process bids, and file the certificate of sale.', 6);
-
+```
 
 ---
 
@@ -78,7 +78,7 @@ INSERT INTO steps (key, name, description, position) VALUES
 
 **Purpose:** Stores default values for each step/trait combination when no overrides apply.
 
-
+```sql
 CREATE TABLE defaults (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     step_key VARCHAR(50) NOT NULL REFERENCES steps(key) ON DELETE CASCADE,
@@ -88,7 +88,7 @@ CREATE TABLE defaults (
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(step_key, trait_key)
 );
-
+```
 
 | Column | Type | Constraints | Purpose |
 |--------|------|-------------|---------|
@@ -102,7 +102,7 @@ CREATE TABLE defaults (
 **Unique Constraint:** `(step_key, trait_key)` ensures exactly one default per step/trait combination.
 
 **Seed Data:**
-
+```sql
 INSERT INTO defaults (step_key, trait_key, value) VALUES
 ('title-search', 'slaHours', '720'),
 ('title-search', 'requiredDocuments', '["title_commitment","tax_certificate"]'),
@@ -140,7 +140,7 @@ INSERT INTO defaults (step_key, trait_key, value) VALUES
 ('conduct-sale', 'feeAuthRequired', 'false'),
 ('conduct-sale', 'assignedRole', '"attorney"'),
 ('conduct-sale', 'templateId', '"sale-report-standard-v1"');
-
+```
 
 ---
 
@@ -148,7 +148,7 @@ INSERT INTO defaults (step_key, trait_key, value) VALUES
 
 **Purpose:** Stores override records that can supersede default values based on specificity (number of pinned dimensions).
 
-
+```sql
 CREATE TABLE overrides (
     id VARCHAR(20) PRIMARY KEY,
     
@@ -188,7 +188,7 @@ CREATE TABLE overrides (
     updated_by VARCHAR(100),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-
+```
 
 | Column | Type | Constraints | Purpose |
 |--------|------|-------------|---------|
@@ -221,7 +221,7 @@ CREATE TABLE overrides (
 | **JSONB for `value`** | Flexible: supports strings (`"attorney"`), numbers (`300`), arrays (`["doc1","doc2"]`), objects |
 
 **Seed Data (49 Overrides):**
-
+```sql
 INSERT INTO overrides (id, step_key, trait_key, state, client, investor, case_type, value, effective_date, status, description, created_by) VALUES
 -- Florida state overrides (specificity 1)
 ('ovr-001', 'file-complaint', 'slaHours', 'FL', NULL, NULL, NULL, '360', '2025-01-01', 'active', 'Florida filing deadline — 15 days', 'admin@pearsonspecter.com'),
@@ -252,7 +252,7 @@ INSERT INTO overrides (id, step_key, trait_key, state, client, investor, case_ty
 ('ovr-042', 'file-complaint', 'slaHours', 'TX', NULL, NULL, 'FC-NonJudicial', '240', '2025-01-01', 'active', 'Texas non-judicial filing', 'admin@pearsonspecter.com'),
 ('ovr-043', 'obtain-judgment', 'slaHours', NULL, NULL, NULL, 'FC-NonJudicial', '0', '2025-01-01', 'active', 'Non-judicial foreclosures skip judgment', 'admin@pearsonspecter.com'),
 ('ovr-055', 'title-search', 'slaHours', 'OH', NULL, NULL, NULL, '504', '2025-01-01', 'active', 'Ohio title search timeline', 'admin@pearsonspecter.com');
-
+```
 
 ---
 
@@ -260,7 +260,7 @@ INSERT INTO overrides (id, step_key, trait_key, state, client, investor, case_ty
 
 **Purpose:** Automatically tracks all changes to override records for compliance and debugging.
 
-
+```sql
 CREATE TABLE override_history (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     override_id VARCHAR(20) NOT NULL REFERENCES overrides(id) ON DELETE CASCADE,
@@ -278,7 +278,7 @@ CREATE TABLE override_history (
     -- Human-readable diff summary
     summary TEXT
 );
-
+```
 
 | Column | Type | Constraints | Purpose |
 |--------|------|-------------|---------|
@@ -292,11 +292,11 @@ CREATE TABLE override_history (
 | `summary` | TEXT | | Human-readable description of change |
 
 **Example Data:**
-
+```sql
 INSERT INTO override_history (override_id, changed_by, change_type, before_state, after_state, summary) VALUES
 ('ovr-034', 'admin@pearsonspecter.com', 'create', NULL, '{"id":"ovr-034","step_key":"file-complaint","trait_key":"slaHours","state":"FL","client":"Chase","investor":"FHA","value":"168","effective_date":"2025-09-01","status":"draft"}', 'Created override ovr-034 for file-complaint.slaHours'),
 ('ovr-034', 'admin@pearsonspecter.com', 'status_change', '{"status":"draft"}', '{"status":"active"}', 'Status changed: draft → active for override ovr-034');
-
+```
 
 ---
 
@@ -304,16 +304,16 @@ INSERT INTO override_history (override_id, changed_by, change_type, before_state
 
 ### 1. Resolution Query Index (Most Critical)
 
-
+```sql
 CREATE INDEX idx_overrides_resolve 
 ON overrides (step_key, trait_key, state, client, investor, case_type, specificity DESC, effective_date DESC)
 WHERE status = 'active';
-
+```
 
 **Purpose:** Supports the core resolution query pattern in O(1) time.
 
 **Query Pattern:**
-
+```sql
 SELECT * FROM overrides
 WHERE step_key = $1 
   AND trait_key = $2
@@ -326,7 +326,7 @@ WHERE step_key = $1
   AND (case_type IS NULL OR case_type = $7)
 ORDER BY specificity DESC, effective_date DESC, id ASC
 LIMIT 1;
-
+```
 
 **Why This Column Order?**
 1. `step_key, trait_key` — Filter to relevant step/trait first (most selective)
@@ -341,16 +341,16 @@ LIMIT 1;
 
 ### 2. Conflict Detection Index
 
-
+```sql
 CREATE INDEX idx_overrides_conflict 
 ON overrides (step_key, trait_key, specificity, state, client, investor, case_type)
 WHERE status IN ('active', 'draft');
-
+```
 
 **Purpose:** Supports conflict detection query that groups by `step_key, trait_key, specificity`.
 
 **Query Pattern:**
-
+```sql
 SELECT a.id, b.id, a.step_key, a.trait_key, a.specificity
 FROM overrides a
 JOIN overrides b ON a.step_key = b.step_key 
@@ -359,41 +359,41 @@ JOIN overrides b ON a.step_key = b.step_key
 WHERE a.status IN ('active', 'draft')
   AND b.status IN ('active', 'draft')
   AND a.id < b.id;
-
+```
 
 ---
 
 ### 3. Effective Date Filtering Index
 
-
+```sql
 CREATE INDEX idx_overrides_effective 
 ON overrides (effective_date, expires_date) 
 WHERE status = 'active';
-
+```
 
 **Purpose:** Efficient date range filtering for `asOfDate` queries.
 
 **Query Pattern:**
-
+```sql
 SELECT * FROM overrides
 WHERE effective_date <= $asOfDate
   AND (expires_date IS NULL OR expires_date > $asOfDate)
   AND status = 'active';
-
+```
 
 ---
 
 ### 4. List/Filter Index
 
-
+```sql
 CREATE INDEX idx_overrides_list 
 ON overrides (status, step_key, trait_key, state, client, investor, case_type, created_at DESC);
-
+```
 
 **Purpose:** Supports CRUD listing with filters and pagination.
 
 **Query Pattern:**
-
+```sql
 SELECT * FROM overrides
 WHERE status = $1
   AND (step_key = $2 OR $2 IS NULL)
@@ -401,25 +401,25 @@ WHERE status = $1
   AND (client = $4 OR $4 IS NULL)
 ORDER BY created_at DESC
 LIMIT $limit OFFSET $offset;
-
+```
 
 ---
 
 ### 5. History Lookup Index
 
-
+```sql
 CREATE INDEX idx_override_history_lookup 
 ON override_history (override_id, changed_at DESC);
-
+```
 
 **Purpose:** Efficient audit trail queries.
 
 **Query Pattern:**
-
+```sql
 SELECT * FROM override_history
 WHERE override_id = $1
 ORDER BY changed_at DESC;
-
+```
 
 ---
 
@@ -427,7 +427,7 @@ ORDER BY changed_at DESC;
 
 ### 1. Auto-Update `updated_at` Timestamp
 
-
+```sql
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -447,7 +447,7 @@ CREATE TRIGGER trg_defaults_updated_at
 CREATE TRIGGER trg_overrides_updated_at 
     BEFORE UPDATE ON overrides 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
+```
 
 **Purpose:** Automatically update `updated_at` on any row modification.
 
@@ -455,7 +455,7 @@ CREATE TRIGGER trg_overrides_updated_at
 
 ### 2. Auto-Log Override Changes to History
 
-
+```sql
 CREATE OR REPLACE FUNCTION log_override_change()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -496,7 +496,7 @@ $$ language 'plpgsql';
 CREATE TRIGGER trg_override_audit
 AFTER INSERT OR UPDATE OR DELETE ON overrides
 FOR EACH ROW EXECUTE FUNCTION log_override_change();
-
+```
 
 **Purpose:** Automatically log every override change to `override_history` table with zero application code.
 
@@ -506,7 +506,7 @@ FOR EACH ROW EXECUTE FUNCTION log_override_change();
 
 ### 1. Resolution Query (Core Algorithm)
 
-
+```sql
 -- Find the winning override for file-complaint.slaHours for FL+Chase+FHA
 SELECT 
     id, step_key, trait_key, state, client, investor, case_type,
@@ -529,7 +529,7 @@ WHERE step_key = 'file-complaint'
   AND (case_type IS NULL OR case_type = 'FC-Judicial')
 ORDER BY specificity DESC, effective_date DESC, id ASC
 LIMIT 1;
-
+```
 
 **Expected Result:**
 | id | step_key | trait_key | state | client | investor | case_type | specificity | value | specificity_label |
@@ -540,7 +540,7 @@ LIMIT 1;
 
 ### 2. Conflict Detection Query
 
-
+```sql
 -- Find all conflicting override pairs
 WITH candidate_pairs AS (
     SELECT 
@@ -572,7 +572,7 @@ SELECT
     format('Same step/trait, specificity %d, overlapping effective dates, compatible selectors', specificity) as reason
 FROM candidate_pairs
 ORDER BY step_key, trait_key, id_a;
-
+```
 
 **Expected Result:** Empty array for seed data (no conflicts in provided overrides).
 
@@ -580,7 +580,7 @@ ORDER BY step_key, trait_key, id_a;
 
 ### 3. Audit History Query
 
-
+```sql
 -- Get full audit trail for an override
 SELECT 
     changed_at, 
@@ -594,7 +594,7 @@ SELECT
 FROM override_history
 WHERE override_id = 'ovr-034'
 ORDER BY changed_at DESC;
-
+```
 
 **Expected Result:**
 | changed_at | changed_by | change_type | summary | old_status | new_status | old_value | new_value |
@@ -606,7 +606,7 @@ ORDER BY changed_at DESC;
 
 ### 4. List Overrides with Filters
 
-
+```sql
 -- List all Florida overrides
 SELECT 
     id, step_key, trait_key, state, client, investor, case_type,
@@ -615,7 +615,7 @@ FROM overrides
 WHERE (state = 'FL' OR state IS NULL)
   AND status = 'active'
 ORDER BY specificity DESC, effective_date DESC, id ASC;
-
+```
 
 ---
 
@@ -646,7 +646,7 @@ ORDER BY specificity DESC, effective_date DESC, id ASC;
 
 ## 🚀 Applying the Schema
 
-bash
+```bash
 # Option 1: Via psql
 psql -U spine -d rules_resolution -f internal/database/schema.sql
 
@@ -657,7 +657,7 @@ go run cmd/server/main.go
 # Option 3: Via Docker Compose
 docker-compose up -d postgres
 # Migrations auto-applied if RUN_MIGRATIONS=true
-
+```
 
 ---
 
