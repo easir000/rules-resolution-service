@@ -9,9 +9,9 @@ A Go-based service that resolves multi-dimensional configuration for foreclosure
 ## 📋 Overview
 
 Given a case context like:
-json
+```json
 {"state": "FL", "client": "Chase", "investor": "FHA", "caseType": "FC-Judicial"}
-
+```
 
 The service determines exact deadlines, documents, fees, and templates by applying override records ranked by **specificity** (like CSS specificity for business rules).
 
@@ -35,7 +35,7 @@ The service determines exact deadlines, documents, fees, and templates by applyi
 
 ### Option A: Run with In-Memory Storage (Fastest)
 
-powershell
+```powershell
 # 1. Navigate to project root
 cd C:\Users\maruf\OneDrive\Desktop\rules-resolution-service
 
@@ -48,14 +48,14 @@ go build -o rules-resolution.exe ./cmd/server
 # Or specify a custom port
 $env:PORT = "8099"
 .\rules-resolution.exe
-
+```
 
 > ⚠️ Keep this PowerShell window open — it's running the server.  
 > Open a **NEW** PowerShell window for testing commands below.
 
 ### Option B: Run with PostgreSQL (Production Mode)
 
-powershell
+```powershell
 # 1. Start PostgreSQL via Docker Compose
 docker-compose up -d postgres
 
@@ -71,7 +71,7 @@ $env:PORT = "8099"
 # 3. Build and run
 go build -o rules-resolution.exe ./cmd/server
 .\rules-resolution.exe
-
+```
 
 > The server will automatically:
 > 1. Apply database migrations from `internal/database/schema.sql`
@@ -83,15 +83,15 @@ go build -o rules-resolution.exe ./cmd/server
 ## 🧪 Testing the API
 
 ### Health Check
-powershell
+```powershell
 Invoke-RestMethod -Uri "http://localhost:8099/api/health"
-
+```
 Expected: `{"status":"ok"}`
 
 ---
 
 ### Resolve Configuration (Core Endpoint)
-powershell
+```powershell
 # Build request body
 $body = @{
     state = "FL"
@@ -110,19 +110,19 @@ $response = Invoke-RestMethod -Uri "http://localhost:8099/api/resolve" `
 Write-Host "file-complaint.slaHours = $($response.steps.'file-complaint'.slaHours.value)"
 Write-Host "Source: $($response.steps.'file-complaint'.slaHours.source)"
 Write-Host "Override ID: $($response.steps.'file-complaint'.slaHours.overrideId)"
-
+```
 
 Expected output:
-
+```
 file-complaint.slaHours = 168
 Source: override
 Override ID: ovr-034
-
+```
 
 ---
 
 ### Explain Endpoint (Debugging)
-powershell
+```powershell
 $body = @{
     stepKey = "file-complaint"
     traitKey = "slaHours"
@@ -139,7 +139,7 @@ $response = Invoke-RestMethod -Uri "http://localhost:8099/api/resolve/explain" `
 
 # View full response
 $response | ConvertTo-Json -Depth 10
-
+```
 
 Expected output shows:
 - `resolvedValue: 168` from `ovr-034` (specificity 3)
@@ -151,7 +151,7 @@ Expected output shows:
 ### Override CRUD API
 
 #### List All Overrides
-powershell
+```powershell
 # Get all overrides
 $overrides = Invoke-RestMethod -Uri "http://localhost:8099/api/overrides"
 Write-Host "Total overrides: $($overrides.count)"
@@ -163,16 +163,16 @@ Write-Host "Florida overrides: $($flOverrides.count)"
 # Filter by status
 $active = Invoke-RestMethod -Uri "http://localhost:8099/api/overrides?status=active"
 Write-Host "Active overrides: $($active.count)"
-
+```
 
 #### Get Single Override
-powershell
+```powershell
 $ovr = Invoke-RestMethod -Uri "http://localhost:8099/api/overrides/ovr-034"
 Write-Host "ID: $($ovr.id), Value: $($ovr.value), Specificity: $($ovr.specificity)"
-
+```
 
 #### Create New Override
-powershell
+```powershell
 # Use raw JSON for reliable parsing
 $jsonBody = @'
 {
@@ -198,10 +198,10 @@ $response = Invoke-RestMethod -Uri "http://localhost:8099/api/overrides" `
     -TimeoutSec 5
 
 Write-Host "✅ Created: $($response.id), Specificity=$($response.specificity)"
-
+```
 
 #### Update Override
-powershell
+```powershell
 $updateBody = @'
 {
   "id": "ovr-test-001",
@@ -222,10 +222,10 @@ $response = Invoke-RestMethod -Uri "http://localhost:8099/api/overrides/ovr-test
     -Body $updateBody
 
 Write-Host "✅ Updated value: $($response.value)"
-
+```
 
 #### Update Status (Activate/Archive)
-powershell
+```powershell
 $statusUpdate = '{"status": "archived"}'
 
 $response = Invoke-RestMethod -Uri "http://localhost:8099/api/overrides/ovr-test-001/status" `
@@ -234,23 +234,23 @@ $response = Invoke-RestMethod -Uri "http://localhost:8099/api/overrides/ovr-test
     -Body $statusUpdate
 
 Write-Host "✅ Status: $($response.status)"
-
+```
 
 #### Check for Conflicts
-powershell
+```powershell
 $conflicts = Invoke-RestMethod -Uri "http://localhost:8099/api/overrides/conflicts"
 Write-Host "Conflicts found: $($conflicts.conflicts.Count)"
 $conflicts | ConvertTo-Json -Depth 5
-
+```
 
 Expected: `{"conflicts":[]}` (seed data is conflict-free)
 
 #### Get Audit History
-powershell
+```powershell
 $history = Invoke-RestMethod -Uri "http://localhost:8099/api/overrides/ovr-034/history"
 Write-Host "History entries: $($history.history.Count)"
 $history | ConvertTo-Json -Depth 5
-
+```
 
 ---
 
@@ -258,7 +258,7 @@ $history | ConvertTo-Json -Depth 5
 
 Save as `test-runner.ps1` and execute:
 
-powershell
+```powershell
 # test-runner.ps1
 $port = 8099
 $baseUrl = "http://localhost:$port/api/resolve"
@@ -287,12 +287,12 @@ foreach ($s in $scenarios) {
 }
 Write-Host "`n[SUMMARY] Passed: $passed, Failed: $failed" -ForegroundColor Magenta
 if ($failed -eq 0) { Write-Host "[RESULT] All tests passed!" -ForegroundColor Green }
-
+```
 
 Run it:
-powershell
+```powershell
 .\test-runner.ps1
-
+```
 
 Expected: `Passed: 4, Failed: 0`
 
@@ -301,7 +301,7 @@ Expected: `Passed: 4, Failed: 0`
 ## 🗄️ Database Setup (PostgreSQL)
 
 ### Using Docker Compose (Recommended)
-powershell
+```powershell
 # Start PostgreSQL
 docker-compose up -d postgres
 
@@ -310,10 +310,10 @@ docker-compose ps
 
 # Connect manually (optional)
 docker-compose exec postgres psql -U spine -d rules_resolution
-
+```
 
 ### Manual PostgreSQL Setup
-powershell
+```powershell
 # Create database
 psql -U postgres -c "CREATE DATABASE rules_resolution;"
 psql -U postgres -c "CREATE USER spine WITH PASSWORD 'spine';"
@@ -324,7 +324,7 @@ psql -U spine -d rules_resolution -f internal/database/schema.sql
 
 # Load seed data (optional)
 # See scripts/seed.go for JSON-based seeding
-
+```
 
 ### Environment Variables
 | Variable | Default | Description |
@@ -342,7 +342,7 @@ psql -U spine -d rules_resolution -f internal/database/schema.sql
 Resolve full configuration for a case context.
 
 **Request:**
-json
+```json
 {
   "state": "FL",
   "client": "Chase",
@@ -350,10 +350,10 @@ json
   "caseType": "FC-Judicial",
   "asOfDate": "2025-07-01"
 }
-
+```
 
 **Response:**
-json
+```json
 {
   "context": {"state": "FL", "client": "Chase", "investor": "FHA", "caseType": "FC-Judicial"},
   "resolvedAt": "2026-04-05T14:30:00Z",
@@ -368,7 +368,7 @@ json
     }
   }
 }
-
+```
 
 ### POST /api/resolve/explain
 Get detailed resolution trace for debugging.
@@ -403,7 +403,7 @@ Health check endpoint.
 
 ## 🏗️ Project Structure
 
-
+```
 rules-resolution-service/
 ├── cmd/server/
 │   └── main.go              # Entry point with all route handlers
@@ -443,14 +443,14 @@ rules-resolution-service/
 ├── go.mod                   # Go module definition
 ├── README.md                # This file
 └── APPROACH.md              # Design decisions & trade-offs
-
+```
 
 ---
 
 ## 🔧 Troubleshooting
 
 ### Server Won't Start
-powershell
+```powershell
 # Check if port is already in use
 Get-NetTCPConnection -LocalPort 8099 -ErrorAction SilentlyContinue
 
@@ -461,20 +461,20 @@ Get-Process -Name "rules-resolution" -ErrorAction SilentlyContinue | Stop-Proces
 go clean -cache -modcache
 go mod tidy
 go build -o rules-resolution.exe ./cmd/server
-
+```
 
 ### 404 Errors on CRUD Endpoints
-powershell
+```powershell
 # Verify routes are registered
 Select-String -Path "cmd/server/main.go" -Pattern "overrideHandler\.RegisterRoutes"
 # Should show exactly ONE match
 
 # Check server logs in the server window for startup messages
 # Look for: "Server starting on :8099" with no errors after
-
+```
 
 ### JSON Decode Errors ("invalid body")
-powershell
+```powershell
 # Use raw JSON strings instead of ConvertTo-Json for POST/PUT
 $json = @'{"id":"test","stepKey":"file-complaint","traitKey":"slaHours","selector":{},"value":100,"effectiveDate":"2025-01-01","status":"draft","createdBy":"test"}'@
 
@@ -483,10 +483,10 @@ Invoke-RestMethod -Uri "http://localhost:8099/api/overrides" `
     -Method Post `
     -ContentType "application/json" `
     -Body $json
-
+```
 
 ### PostgreSQL Connection Issues
-powershell
+```powershell
 # Verify Docker container is running
 docker-compose ps
 
@@ -498,13 +498,13 @@ psql -h localhost -U spine -d rules_resolution -c "SELECT 1;"
 docker-compose down -v
 docker-compose up -d postgres
 Start-Sleep -Seconds 10
-
+```
 
 ---
 
 ## 📦 Building for Production
 
-powershell
+```powershell
 # Build optimized binary
 go build -ldflags="-s -w" -o rules-resolution ./cmd/server
 
@@ -515,7 +515,7 @@ docker build -t rules-resolution:latest .
 docker run -p 8080:8080 `
   -e DATABASE_URL="postgres://spine:spine@host.docker.internal:5432/rules_resolution?sslmode=disable" `
   rules-resolution:latest
-
+```
 
 ---
 
