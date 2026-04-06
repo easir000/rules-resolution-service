@@ -4,7 +4,6 @@ import (
     "encoding/json"
     "net/http"
     "sort"
-    "strings"
     "time"
 
     "github.com/go-chi/chi/v5"
@@ -131,7 +130,9 @@ func (h *OverrideHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 func (h *OverrideHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
     id := chi.URLParam(r, "id")
-    var req struct{ Status string json:"status" }
+    var req struct {
+        Status string `json:"status"`
+    }
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
         w.Header().Set("Content-Type", "application/json")
         w.WriteHeader(http.StatusBadRequest)

@@ -41,10 +41,10 @@ const (
 
 // Selector defines which dimensions an override pins (empty = wildcard)
 type Selector struct {
-	State    *string `json:"state,omitempty"`
-	Client   *string `json:"client,omitempty"`
-	Investor *string `json:"investor,omitempty"`
-	CaseType *string `json:"caseType,omitempty"`
+    State    *string `json:"state,omitempty"`
+    Client   *string `json:"client,omitempty"`
+    Investor *string `json:"investor,omitempty"`
+    CaseType *string `json:"caseType,omitempty"`
 }
 
 // Specificity returns the count of pinned dimensions (0-4)
@@ -93,20 +93,20 @@ type CaseContext struct {
 
 // Override represents a rule that can override default values
 type Override struct {
-	ID            string          `json:"id"`
-	StepKey       string          `json:"stepKey"`
-	TraitKey      TraitKey        `json:"traitKey"`
-	Selector      Selector        `json:"selector"`
-	Value         json.RawMessage `json:"value"`
-	Specificity   int             `json:"specificity"` // Computed, not stored in request
-	EffectiveDate time.Time       `json:"effectiveDate"`
-	ExpiresDate   *time.Time      `json:"expiresDate,omitempty"`
-	Status        string          `json:"status"` // draft, active, archived
-	Description   string          `json:"description,omitempty"`
-	CreatedBy     string          `json:"createdBy"`
-	CreatedAt     time.Time       `json:"createdAt"`
-	UpdatedBy     *string         `json:"updatedBy,omitempty"`
-	UpdatedAt     time.Time       `json:"updatedAt"`
+    ID            string          `json:"id"`
+    StepKey       string          `json:"stepKey"`
+    TraitKey      TraitKey        `json:"traitKey"`  // TraitKey is type alias for string
+    Selector      Selector        `json:"selector"`
+    Value         json.RawMessage `json:"value"`     // Can be any JSON value
+    Specificity   int             `json:"specificity"`
+    EffectiveDate time.Time       `json:"effectiveDate"`
+    ExpiresDate   *time.Time      `json:"expiresDate,omitempty"`
+    Status        string          `json:"status"`
+    Description   string          `json:"description,omitempty"`
+    CreatedBy     string          `json:"createdBy"`
+    CreatedAt     time.Time       `json:"createdAt"`
+    UpdatedBy     *string         `json:"updatedBy,omitempty"`
+    UpdatedAt     time.Time       `json:"updatedAt"`
 }
 
 // IsEffectiveAt returns true if the override is active at the given date
